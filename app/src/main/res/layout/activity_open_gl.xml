@@ -1,0 +1,41 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:tools="http://schemas.android.com/tools"
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                tools:context="com.fredrikux.collordotts.OpenGLActivity">
+
+    <com.fredrikux.collordotts.opengl.OpenGLSurfaceView
+        android:layout_height="fill_parent"
+        android:layout_width="fill_parent"
+        android:id="@+id/opengl_view">
+
+    </com.fredrikux.collordotts.opengl.OpenGLSurfaceView>
+
+    <TextView
+        android:text="@string/score_label_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/score_label"
+        android:textColor="@android:color/white"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="@string/game_over_label_text"
+        android:id="@+id/Game_over_label"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true"
+        android:visibility="invisible"/>
+
+    <Button
+        style="?android:attr/buttonStyleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/retry_button"
+        android:layout_below="@+id/Game_over_label"
+        android:layout_centerHorizontal="true"
+        android:text="@string/retry_button_text"
+        android:visibility="invisible"/>
+
+</RelativeLayout>
