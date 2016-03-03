@@ -1,20 +1,18 @@
 package com.fredrikux.collordotts.opengl;
 
 import android.content.Context;
-import android.hardware.Sensor;
-import android.hardware.SensorManager;
-import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 
 import com.fredrikux.collordotts.models.GameManager;
+import com.fredrikux.collordotts.utils.IActionListener;
 
-public class OpenGLSurfaceView extends GLSurfaceView {
+public class GLSurfaceView extends android.opengl.GLSurfaceView {
 
     private GLRenderer mRenderer;
     private final Context context;
 
-    public OpenGLSurfaceView(Context context) {
+    public GLSurfaceView(Context context) {
         super(context);
         this.context = context;
 
@@ -27,14 +25,14 @@ public class OpenGLSurfaceView extends GLSurfaceView {
         setRenderer(mRenderer);
 
         // Render the view only when there is a change in the drawing data
-        setRenderMode(OpenGLSurfaceView.RENDERMODE_CONTINUOUSLY);
+        setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
         // make sure we get key events
         setFocusable(true);
 
     }
 
-    public OpenGLSurfaceView(Context context, AttributeSet attrs) {
+    public GLSurfaceView(Context context, AttributeSet attrs) {
         super(context, attrs);
         this.context = context;
 
@@ -47,7 +45,7 @@ public class OpenGLSurfaceView extends GLSurfaceView {
         setRenderer(mRenderer);
 
         // Render the view only when there is a change in the drawing data
-        setRenderMode(OpenGLSurfaceView.RENDERMODE_CONTINUOUSLY);
+        setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
         // make sure we get key events
         setFocusable(true);
@@ -79,11 +77,9 @@ public class OpenGLSurfaceView extends GLSurfaceView {
         return super.onTouchEvent(event);
     }
 
-    public void step() {
-        mRenderer.step();
+
+    public void onStop() {
+        mRenderer.finish();
     }
 
-    public void restart() {
-        mRenderer.restart();
-    }
 }

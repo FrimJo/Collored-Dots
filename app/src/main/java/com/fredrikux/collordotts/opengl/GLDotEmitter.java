@@ -1,39 +1,19 @@
 package com.fredrikux.collordotts.opengl;
 
-import android.graphics.Color;
-import android.graphics.PointF;
 import android.opengl.GLES20;
 import android.opengl.GLU;
 import android.util.Log;
 
-import com.fredrikux.collordotts.utils.IActionListener;
-
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 
 public class GLDotEmitter {
-
-    public static final int[] colors = {
-            Color.parseColor("#E91E63"),
-            Color.parseColor("#2196F3"),
-            Color.parseColor("#8BC34A")
-    };
-
-    public static final int COLLISION_POINT = 0;
-    public static final int COLLISION_END_GAME = 1;
-    public static final int COLLISION_BIG_POINT = 2;
 
     private static final int SIZE_OF_COORD = 2;
     private static final int SIZE_OF_COLOR = 3;
 
-
     private final String TAG = "GLDotEmitter";
-
-    private final Random RANDOM = new Random(System.currentTimeMillis());
 
     private final String vertexShaderCode =
         "uniform mat4 u_MVPMatrix;" +
@@ -43,8 +23,8 @@ public class GLDotEmitter {
         "varying vec4 v_Color;" +
         "void main() {" +
         "  v_Color = a_Color;" +
-        "    gl_Position = u_MVPMatrix * a_Position;" +
-        "    gl_PointSize = a_Size;" +
+        "  gl_Position = u_MVPMatrix * a_Position;" +
+        "  gl_PointSize = a_Size;" +
         "}";
 
     private final String fragmentShaderCode =
@@ -54,8 +34,6 @@ public class GLDotEmitter {
         "void main() {" +
         "  gl_FragColor = (v_Color * texture2D(u_Texture, gl_PointCoord));" +
         "}";
-
-    private final GLDotContainer dotList = new GLDotContainer();
 
     private final int mProgram;
 
@@ -72,13 +50,12 @@ public class GLDotEmitter {
     private FloatBuffer mPositionBuffer;
     private FloatBuffer mColorBuffer;
     private FloatBuffer mSizeBuffer;
-
-    private IActionListener mListener;
-
-    private GLPlayerDot mPlayerDot;
+    private int mDotCount;
 
 
-    public GLDotEmitter() {
+    public GLDotEmitter(final int textureIndex) {
+
+        mTextureData = textureIndex;
 
         // Create program
         mProgram = buildProgram();
@@ -138,127 +115,29 @@ public class GLDotEmitter {
 
     }
 
-    public void createPointDot(final int maxX, final int maxY,
-                               final float size, final int value){
-
-        float x = RANDOM.nextInt(maxX - (int) size*2) + size;
-        float y = RANDOM.nextInt(maxY - (int) size*2) + size;
-
-
-        GLDot pDot = new GLPointDot(new PointF(x, y), mPlayerDot.getColor(), size,
-                value);
-
-        initDot(pDot);
-
-    }
-
-    public void createRandomDot(final float velocity,
-                                 final int maxX, final int maxY,
-                                 final float size){
-
-        // Default values for position and direction
-        float y, x = y =  0.0f;
-        float vy, vx = vy = 1.0f;
-
-        // For sides, switch 0-3
-        switch (RANDOM.nextInt(4)){
-
-            // Left
-            case 0:
-                y = RANDOM.nextInt(maxY);
-                vy = (RANDOM.nextFloat()*2.0f) - 1.0f;
-                break;
-
-            // Top
-            case 1:
-                x = RANDOM.nextInt(maxX);
-                vx = (RANDOM.nextFloat()*2.0f) - 1.0f;
-                break;
-
-            // Right
-            case 2:
-                x = maxX;
-                y = RANDOM.nextInt(maxY);
-
-                vx = - 1.0f;
-                vy = (RANDOM.nextFloat()*2.0f) - 1.0f;
-                break;
-
-            // Bottom
-            case 3:
-                x = RANDOM.nextInt(maxX);
-                y = maxY;
-
-                vx = (RANDOM.nextFloat()*2.0f) - 1.0f;
-                vy = - 1.0f;
-                break;
-        }
-
-        PointF position = new PointF(x, y);
-
-        double normal = Math.sqrt(Math.pow(vx, 2.0) + Math.pow(vy, 2.0));
-
-        PointF velocityVector = new PointF(
-                vx/(float)normal*velocity,
-                vy/(float)normal*velocity
-        );
-
-        int index = RANDOM.nextInt(colors.length);
-        int color = colors[index];
-
-        GLDot dot = new GLDot(position, color, velocityVector, size);
-
-        initDot(dot);
-
-    }
-
-    public void createPlayerDot(final PointF position, final float size){
-
-        int index = RANDOM.nextInt(colors.length);
-
-        mPlayerDot = new GLPlayerDot(position, colors[index], size);
-        initDot(mPlayerDot);
-
-
-    }
-
-    private void initDot(final GLDot dot){
-
-        PointF position = dot.getPos();
-
-        mPositionBuffer.put(dotList.size()* SIZE_OF_COORD, position.x);
-        mPositionBuffer.put(dotList.size() * SIZE_OF_COORD + 1, position.y);
-
-        int color = dot.getColor();
-
-        mColorBuffer.put(dotList.size() * SIZE_OF_COLOR,
-                Color.red(color) / 255.0f);
-        mColorBuffer.put(dotList.size()*SIZE_OF_COLOR + 1,
-                Color.green(color) / 255.0f);
-        mColorBuffer.put(dotList.size()*SIZE_OF_COLOR + 2,
-                Color.blue(color) / 255.0f);
-
-        mSizeBuffer.put(dotList.size(), dot.getSize());
-        dotList.add(dot);
-    }
+    float[] mFloatPositions;
+    float[] mFloatColors;
+    float[] mFloatSizes;
 
     /**
-     * Initialize this after all dots has een created.
+     * Initialize this after all dots has been created.
      */
-    private static final int BUFFER_SIZE = 10000;
-    public void prepareBuffers( final int textureIndex ){
+    public void prepareBuffers( float[] positions, float[] colors,
+                                float[] sizes ){
 
-        mTextureData = textureIndex;
+        mFloatPositions = positions;
+        mFloatColors = colors;
+        mFloatSizes = sizes;
 
-        ByteBuffer byteBuffer = ByteBuffer.allocateDirect(BUFFER_SIZE * SIZE_OF_COORD * 4);
+        ByteBuffer byteBuffer = ByteBuffer.allocateDirect(positions.length * 4);
         byteBuffer.order(ByteOrder.nativeOrder());
         FloatBuffer positionBuffer = byteBuffer.asFloatBuffer();
 
-        byteBuffer = ByteBuffer.allocateDirect(BUFFER_SIZE * SIZE_OF_COLOR * 4);
+        byteBuffer = ByteBuffer.allocateDirect(colors.length * 4);
         byteBuffer.order(ByteOrder.nativeOrder());
         FloatBuffer colorBuffer = byteBuffer.asFloatBuffer();
 
-        byteBuffer = ByteBuffer.allocateDirect(BUFFER_SIZE * 4);
+        byteBuffer = ByteBuffer.allocateDirect(sizes.length * 4);
         byteBuffer.order(ByteOrder.nativeOrder());
         FloatBuffer sizeBuffer = byteBuffer.asFloatBuffer();
 
@@ -272,105 +151,27 @@ public class GLDotEmitter {
 
     }
 
-    private void updatePositions(){
+    public void updateBuffers(int count){
 
-        for (int i = 0; i < dotList.size(); i++){
-            GLDot dot = dotList.get(i);
-            dot.updatePosition();
-            PointF pos = dot.getPos();
+        mDotCount = count;
 
-            mPositionBuffer.put(i * SIZE_OF_COORD, pos.x);
-            mPositionBuffer.put(i * SIZE_OF_COORD + 1, pos.y);
+        mPositionBuffer.position(0);
+        mPositionBuffer.put(mFloatPositions);
+        mPositionBuffer.position(0);
 
-            if ( didCollide(mPlayerDot, dot) ) {
+        mColorBuffer.position(0);
+        mColorBuffer.put(mFloatColors);
+        mColorBuffer.position(0);
 
-                // Remove the dot
-                dot.kill();
-                mSizeBuffer.put(i, 0.0f);
+        mSizeBuffer.position(0);
+        mSizeBuffer.put(mFloatSizes);
+        mSizeBuffer.position(0);
 
-            }
-        }
-    }
-
-    public void setListener(final IActionListener listener){
-        mListener = listener;
-    }
-
-    private boolean didCollide(final GLPlayerDot pDot, final GLDot dot){
-
-        // Don't compare same dots with it self
-        if(!pDot.isAlive() || !dot.isAlive() || pDot.id == dot.id){
-            return false;
-        }
-
-        PointF pos1 = pDot.getPos();
-        PointF pos2 = dot.getPos();
-        PointF p = new PointF(
-            pos1.x - pos2.x,
-            pos1.y - pos2.y
-        );
-
-        double dist_pow = Math.pow(p.x, 2.0) + Math.pow(p.y, 2.0);
-        double dim = Math.pow(pDot.getSize(), 2.0) + Math.pow
-                (dot.getSize(), 2.0);
-
-        // Collision occurred
-        if(dist_pow <= dim/4.0){
-
-
-            if(dot instanceof GLPointDot){
-
-                // Increment points
-                mListener.onActionPerformed(new IActionListener.ActionEvent
-                        (COLLISION_BIG_POINT, dot, "Collision with " +
-                                "big point (GLPointDot) occurred, increment " +
-                                "points"));
-
-
-                // Switch color on model
-                boolean done = false;
-                while (!done){
-                    int i = RANDOM.nextInt(colors.length);
-                    if(pDot.getColor() != colors[i]){
-                        done = true;
-                        pDot.setColor(colors[i]);
-                    }
-                }
-
-                // Switch color on view
-                int c = pDot.getColor();
-                int index = dotList.indexOf(pDot);
-
-                mColorBuffer.put(index * SIZE_OF_COLOR, Color.red(c) / 255.0f);
-                mColorBuffer.put(index * SIZE_OF_COLOR + 1, Color.green(c) / 255.0f);
-                mColorBuffer.put(index * SIZE_OF_COLOR + 2, Color.blue(c) / 255.0f);
-
-            }
-
-            // If color is equal to the color of player
-            else if(pDot.getColor() == dot.getColor()){
-
-                mListener.onActionPerformed(new IActionListener.ActionEvent
-                        (COLLISION_POINT, null, "Collision occurred, " +
-                                "increment points"));
-
-            } else {
-
-                mListener.onActionPerformed(new IActionListener.ActionEvent
-                        (COLLISION_END_GAME, null, "Collision occurred, game " +
-                                "over"));
-            }
-            return true;
-        }
-
-        return false;
     }
 
     public void draw(float[] mMVPMatrix){
 
         GLES20.glUseProgram(mProgram);
-
-        updatePositions();
 
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
@@ -410,54 +211,16 @@ public class GLDotEmitter {
         GLES20.glUniform1i(u_Texture, 0);
 
         GLES20.glUniformMatrix4fv(u_MVPMatrix, 1, false, mMVPMatrix, 0);
-
-        GLES20.glDrawArrays(GLES20.GL_POINTS, 0, dotList.size());
+        GLES20.glDrawArrays(GLES20.GL_POINTS, 0, mDotCount);
 
         // Disable vertex array
         GLES20.glDisableVertexAttribArray(a_Position);
         GLES20.glDisableVertexAttribArray(a_Color);
     }
 
-    public GLDot getPlayerDot() {
-        return mPlayerDot;
-    }
-
-    public boolean hasPointDot() {
-        return GLPointDot.isExists();
-    }
-
-    public void removeBigPointDot() {
-
-        int i = dotList.indexOf(GLPointDot.theOne);
-        mSizeBuffer.put(i, 0.0f);
-        GLPointDot.theOne.kill();
-    }
-
-    public void restart() {
-
-        dotList.clear();
-
-
-        ByteBuffer byteBuffer = ByteBuffer.allocateDirect(BUFFER_SIZE * SIZE_OF_COORD * 4);
-        byteBuffer.order(ByteOrder.nativeOrder());
-        FloatBuffer positionBuffer = byteBuffer.asFloatBuffer();
-
-        byteBuffer = ByteBuffer.allocateDirect(BUFFER_SIZE * SIZE_OF_COLOR * 4);
-        byteBuffer.order(ByteOrder.nativeOrder());
-        FloatBuffer colorBuffer = byteBuffer.asFloatBuffer();
-
-        byteBuffer = ByteBuffer.allocateDirect(BUFFER_SIZE * 4);
-        byteBuffer.order(ByteOrder.nativeOrder());
-        FloatBuffer sizeBuffer = byteBuffer.asFloatBuffer();
-
-        positionBuffer.position(0);
-        colorBuffer.position(0);
-        sizeBuffer.position(0);
-
-        mPositionBuffer = positionBuffer;
-        mColorBuffer = colorBuffer;
-        mSizeBuffer = sizeBuffer;
-
-        initDot(mPlayerDot);
+    public void finish() {
+        mPositionBuffer.clear();
+        mColorBuffer.clear();
+        mSizeBuffer.clear();
     }
 }

@@ -7,4 +7,6 @@
     <string name="score_label_text">0</string>
     <string name="game_over_label_text">GAME OVER</string>
     <string name="retry_button_text">Retry</string>
+    <string name="opengl_label_text">Start New Game</string>
+    <string name="opengl_button_text">Start</string>
 </resources>
