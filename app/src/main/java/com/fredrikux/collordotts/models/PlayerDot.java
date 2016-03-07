@@ -5,37 +5,85 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.Parcel;
+import android.os.Parcelable;
 
 import com.fredrikux.collordotts.utils.Animation;
 
-public class PlayerDot extends Dot implements SensorEventListener {
+public class PlayerDot
+        extends
+            Dot
+        implements
+            SensorEventListener,
+            Parcelable,
+            GameRules {
 
     private float cX, cY;
     private long calibrateTimer = System.currentTimeMillis();
-    private boolean calibrating = true;
+    private boolean calibrating = SHOULD_CALIBRATE_SENSOR;
     private int counter = 0;
 
     private final PointF mSensorPoint = new PointF();
     private float[] mRotationMatrix = new float[16];
 
-    private Animation mPulseAnimation = new PulseAnimation(500000000.0) {
+    private Animation mSizeAnimation = new SizeAnimation() {
         @Override
         public void updateSize(float size) {
-            setSize(size);
+            PlayerDot.super.setSize(size);
         }
     };
 
     public PlayerDot(PointF position, int color, float size, float speed) {
         super(position, new PointF(.0f, .0f), color, size, speed);
 
-        mPulseAnimation.startAnimation(System.currentTimeMillis(),
-                100000000000l, size, size*2.0f/3.0f);
     }
+
+    protected PlayerDot(Parcel in) {
+        super(in);
+        cX = in.readFloat();
+        cY = in.readFloat();
+        calibrateTimer = in.readLong();
+        counter = in.readInt();
+        mSensorPoint.x = in.readFloat();
+        mSensorPoint.y = in.readFloat();
+        mRotationMatrix = in.createFloatArray();
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        super.writeToParcel(dest, flags);
+        dest.writeFloat(cX);
+        dest.writeFloat(cX);
+        dest.writeFloat(cY);
+        dest.writeLong(calibrateTimer);
+        dest.writeInt(counter);
+        dest.writeParcelable(mSensorPoint, flags);
+        dest.writeFloatArray(mRotationMatrix);
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    public static final Creator<PlayerDot> CREATOR = new Creator<PlayerDot>() {
+        @Override
+        public PlayerDot createFromParcel(Parcel in) {
+            return new PlayerDot(in);
+        }
+
+        @Override
+        public PlayerDot[] newArray(int size) {
+            return new PlayerDot[size];
+        }
+    };
 
     @Override
     public void update(double now) {
 
-        //mPulseAnimation.updateAnimation(now);
+        if(mSizeAnimation.isAnimating()){
+            mSizeAnimation.updateAnimation(now);
+        }
 
         synchronized (mSensorPoint){
 
@@ -87,7 +135,7 @@ public class PlayerDot extends Dot implements SensorEventListener {
             return;
         }
 
-        PointF sensorPoint = new PointF(x, y-cY);
+        PointF sensorPoint = new PointF(x-cX, y-cY);
 
         // The new position
         PointF sPosition = new PointF(
@@ -96,7 +144,7 @@ public class PlayerDot extends Dot implements SensorEventListener {
         );
 
         // Will the new position be on the screen?
-        boolean[] flags = GameManager.isPositionOnScreen(sPosition, super.size);
+        boolean[] flags = GameManager.isPositionOnScreen(sPosition, getSize());
 
         // If the new position is outside in the x-axis
         if(flags[GameManager.OUT_OF_LEFT] || flags[GameManager.OUT_OF_RIGHT]){
@@ -117,6 +165,12 @@ public class PlayerDot extends Dot implements SensorEventListener {
             mSensorPoint.x = sensorPoint.x;
             mSensorPoint.y = sensorPoint.y;
         }
+    }
+
+    @Override
+    public void setSize(float size) {
+        mSizeAnimation.startAnimation(System.nanoTime(), 100000000l, super
+                .getSize(), size );
     }
 
     @Override

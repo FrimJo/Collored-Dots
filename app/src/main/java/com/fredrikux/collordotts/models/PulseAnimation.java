@@ -8,7 +8,7 @@ public abstract class PulseAnimation extends Animation {
     private float mTo;
     private final double mSpeed;
 
-    PulseAnimation(double speed){
+    public PulseAnimation(double speed){
         mSpeed = speed;
     }
 

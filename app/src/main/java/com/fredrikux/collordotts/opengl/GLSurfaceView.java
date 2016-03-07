@@ -1,58 +1,65 @@
 package com.fredrikux.collordotts.opengl;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.Bundle;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 
+import com.fredrikux.collordotts.R;
 import com.fredrikux.collordotts.models.GameManager;
-import com.fredrikux.collordotts.utils.IActionListener;
 
-public class GLSurfaceView extends android.opengl.GLSurfaceView {
+import java.io.IOException;
+import java.io.InputStream;
 
-    private GLRenderer mRenderer;
-    private final Context context;
+import javax.microedition.khronos.egl.EGL10;
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.egl.EGLDisplay;
+
+public class GLSurfaceView
+        extends
+            android.opengl.GLSurfaceView {
+
 
     public GLSurfaceView(Context context) {
         super(context);
-        this.context = context;
+        /*setEGLConfigChooser(new EGLConfigChooser() {
+            @Override
+            public EGLConfig chooseConfig(EGL10 egl, EGLDisplay display) {
 
-        // Create an OpenGL ES 2.0 context
-        setEGLContextClientVersion(2);
-        setPreserveEGLContextOnPause(true);
+                int attribs[] = {
+                        EGL10.EGL_LEVEL, 0,
+                        EGL10.EGL_RENDERABLE_TYPE, 4,  // EGL_OPENGL_ES2_BIT
+                        EGL10.EGL_COLOR_BUFFER_TYPE, EGL10.EGL_RGB_BUFFER,
+                        EGL10.EGL_RED_SIZE, 8,
+                        EGL10.EGL_GREEN_SIZE, 8,
+                        EGL10.EGL_BLUE_SIZE, 8,
+                        EGL10.EGL_DEPTH_SIZE, 16,
+                        EGL10.EGL_SAMPLE_BUFFERS, 1,
+                        EGL10.EGL_SAMPLES, 4,  // This is for 4x MSAA.
+                        EGL10.EGL_NONE
+                };
+                EGLConfig[] configs = new EGLConfig[1];
+                int[] configCounts = new int[1];
+                egl.eglChooseConfig(display, attribs, configs, 1, configCounts);
 
-        // Set the renderer for drawing on the OpenGLSurfaceView
-        mRenderer = new GLRenderer(context);
-        setRenderer(mRenderer);
-
-        // Render the view only when there is a change in the drawing data
-        setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-
-        // make sure we get key events
-        setFocusable(true);
+                if (configCounts[0] == 0) {
+                    // Failed! Error handling.
+                    return null;
+                } else {
+                    return configs[0];
+                }
+            }
+        });*/
 
     }
+
 
     public GLSurfaceView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        this.context = context;
-
-        // Create an OpenGL ES 2.0 context
-        setEGLContextClientVersion(2);
-        setPreserveEGLContextOnPause(true);
-
-        // Set the renderer for drawing on the OpenGLSurfaceView
-        mRenderer = new GLRenderer(context);
-        setRenderer(mRenderer);
-
-        // Render the view only when there is a change in the drawing data
-        setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-
-        // make sure we get key events
-        setFocusable(true);
-    }
-
-    public void setGameManager(final GameManager gameManager){
-        mRenderer.setGameManager(gameManager);
     }
 
     @Override
@@ -77,9 +84,16 @@ public class GLSurfaceView extends android.opengl.GLSurfaceView {
         return super.onTouchEvent(event);
     }
 
+    @Override
+    protected Parcelable onSaveInstanceState() {
 
-    public void onStop() {
-        mRenderer.finish();
+        return super.onSaveInstanceState();
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Parcelable state) {
+
+        super.onRestoreInstanceState(state);
     }
 
 }

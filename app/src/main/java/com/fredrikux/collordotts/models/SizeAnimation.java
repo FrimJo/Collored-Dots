@@ -24,10 +24,6 @@ public abstract class SizeAnimation extends Animation {
         float size = (float) (mStartSize + mGoalSize * percent);
         updateSize(size);
 
-        // If the full percentage of the animation is done, stop animate.
-        if(percent >= 1.0){
-            stopAnimation();
-        }
     }
 
 }

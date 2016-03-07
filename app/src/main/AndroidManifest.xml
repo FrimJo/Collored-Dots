@@ -12,6 +12,7 @@
             android:label="@string/title_activity_open_gl"
             android:exported="true"
             android:screenOrientation="portrait">
+
             <intent-filter>
                 <action android:name="android.intent.action.INTRO" />
                 <action android:name="android.intent.action.MAIN" />
@@ -20,6 +21,11 @@
         </activity>
 
         <uses-feature android:glEsVersion="0x00020000" android:required="true" />
+
+        <meta-data android:name="com.google.android.gms.games.APP_ID"
+                   android:value="@string/app_id" />
+        <meta-data android:name="com.google.android.gms.version"
+                   android:value="@integer/google_play_services_version"/>
 
     </application>
 

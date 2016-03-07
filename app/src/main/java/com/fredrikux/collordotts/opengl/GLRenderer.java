@@ -8,6 +8,8 @@ import android.opengl.GLSurfaceView;
 import android.opengl.GLU;
 import android.opengl.GLUtils;
 import android.opengl.Matrix;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.Log;
 
 import com.fredrikux.collordotts.R;
@@ -20,7 +22,10 @@ import java.io.InputStream;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-public class GLRenderer implements GLSurfaceView.Renderer {
+public class GLRenderer
+        implements
+            GLSurfaceView.Renderer,
+            Parcelable {
 
     private static final String TAG = "GLRenderer";
 
@@ -28,18 +33,33 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     private final float[] mProjectionMatrix = new float[16];
     private final float[] mViewMatrix = new float[16];
 
-    private final Context context;
-
     public static int screenW;
     public static int screenH;
 
     private GameManager mGameManager;
     private GLDotEmitter mDotEmitter;
+    private final Bitmap mBitmap;
 
-
-    public GLRenderer(Context context){
-        this.context = context;
+    public GLRenderer(Bitmap bitmap){
+        mBitmap = bitmap;
     }
+
+    protected GLRenderer(Parcel in) {
+        mGameManager = in.readParcelable(GameManager.class.getClassLoader());
+        mBitmap = in.readParcelable(Bitmap.class.getClassLoader());
+    }
+
+    public static final Creator<GLRenderer> CREATOR = new Creator<GLRenderer>() {
+        @Override
+        public GLRenderer createFromParcel(Parcel in) {
+            return new GLRenderer(in);
+        }
+
+        @Override
+        public GLRenderer[] newArray(int size) {
+            return new GLRenderer[size];
+        }
+    };
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
@@ -50,13 +70,13 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA);
 
-        int dotTextureIndex = loadTexture(R.raw.white_point);
+        int dotTextureIndex = loadTexture();
         mDotEmitter = new GLDotEmitter(dotTextureIndex);
 
         mDotEmitter.prepareBuffers(
-                mGameManager.getPositions(),
-                mGameManager.getColors(),
-                mGameManager.getSizes()
+            mGameManager.getPositions(),
+            mGameManager.getColors(),
+            mGameManager.getSizes()
         );
 
         // The camera is located at (0,0,-3),
@@ -104,10 +124,9 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     /**
      * Loads a texture using it's resource id.
      *
-     * @param resourceId the resource id.
      * @return a int handler representing the texture.
      */
-    public int loadTexture(final int resourceId) {
+    public int loadTexture() {
 
         // One texture
         final int[] textureHandle = new int[1];
@@ -119,7 +138,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
             options.inScaled = false;	// No pre-scaling
 
             // Read in the resource
-            final Bitmap bitmap = getBitmap(resourceId);
+            final Bitmap bitmap = mBitmap;
 
             // Bind to the texture in OpenGL
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureHandle[0]);
@@ -131,7 +150,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
             GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
 
             // Recycle the bitmap, since its data has been loaded into OpenGL.
-            bitmap.recycle();
+            //bitmap.recycle();
         }
 
         if (textureHandle[0] == 0) {
@@ -139,26 +158,6 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         }
 
         return textureHandle[0];
-    }
-
-    private Bitmap getBitmap(int resourceId){
-        InputStream is = context.getResources().openRawResource(resourceId);
-        Bitmap bitmap;
-
-        try {
-            bitmap = BitmapFactory.decodeStream(is);
-        }
-        finally {
-
-            //Always clear and close
-            try {
-                is.close();
-            }
-            catch (IOException e) {}
-        }
-
-        return bitmap;
-
     }
 
     /**
@@ -194,19 +193,24 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     }
 
     /**
-     * Sets the game manager for the renderer.
-     *
-     * @param gameManager the game manager to set.
-     */
-    public void setGameManager(GameManager gameManager){
-        mGameManager = gameManager;
-    }
-
-    /**
      * Finish this GLRenderer object.
      */
-    public void finish() {
+    public void onStop() {
         mDotEmitter.finish();
     }
 
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeParcelable(mGameManager, flags);
+        dest.writeParcelable(mBitmap, flags);
+    }
+
+    public void setGameManager(GameManager gameManager) {
+        this.mGameManager = gameManager;
+    }
 }
