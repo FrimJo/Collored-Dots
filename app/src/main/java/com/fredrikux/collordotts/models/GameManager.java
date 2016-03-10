@@ -5,9 +5,11 @@ import android.graphics.PointF;
 import android.hardware.Sensor;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.media.SoundPool;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.fredrikux.collordotts.controllers.OpenGLActivity;
 import com.fredrikux.collordotts.opengl.GLRenderer;
 import com.fredrikux.collordotts.utils.IActionListener;
 import com.fredrikux.collordotts.utils.IActionListener.ActionEvent;
@@ -71,10 +73,16 @@ public class GameManager
     private boolean running = false;
     private boolean paused = false;
     private int gameState = STATE_NOT_STARTED;
+    private boolean mKioskMode = false;
+    private int mColorCounter = RANDOM.nextInt(colorAlt.length);
+    private SoundPool mSoundPool;
+    private int mSoundBlopId;
+    private int mSoundJumpId;
 
     public GameManager(){
-        mPlayerDot = createPlayerDot(new PointF(GLRenderer.screenW / 2.0f,
-                GLRenderer.screenH / 2.0f), PLAYER_DOT_SIZE_RATIO);
+        mPlayerDot = spawnPlayerDot(new PointF(GLRenderer.screenW / 2.0f,
+                GLRenderer.screenH / 2.0f),
+                PLAYER_DOT_SIZE_RATIO*OpenGLActivity.screenDensity);
 
     }
 
@@ -88,12 +96,15 @@ public class GameManager
         paused = in.readInt() == 1 ? true : false;
         gameState = in.readInt();
 
-        mPlayerDot = createPlayerDot(new PointF(GLRenderer.screenW / 2.0f,
-                GLRenderer.screenH / 2.0f), PLAYER_DOT_SIZE_RATIO);
+        mPlayerDot = spawnPlayerDot(new PointF(GLRenderer.screenW / 2.0f,
+                GLRenderer.screenH / 2.0f)
+                , PLAYER_DOT_SIZE_RATIO*OpenGLActivity.screenDensity);
 
     }
 
-    public void startNewGame(){
+    public void startNewGame(final boolean kioskMode){
+
+        mKioskMode = kioskMode;
 
         if(loop == null || !loop.isAlive()) {
 
@@ -101,7 +112,7 @@ public class GameManager
             loop = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    gameLoop();
+                    gameLoop(kioskMode);
                 }
             }, "Game Loop");
             loop.setDaemon(true);
@@ -119,7 +130,7 @@ public class GameManager
             }
 
             // Try to start the game again.
-            startNewGame();
+            startNewGame(kioskMode);
         }
     }
 
@@ -135,21 +146,20 @@ public class GameManager
         }
     };
 
-    public PointDot createPointDot(final float size, final int value){
+    public PointDot spawnPointDot(final float size, final int value){
 
         float x = RANDOM.nextInt(GLRenderer.screenW - (int) size*2) + size;
         float y = RANDOM.nextInt(GLRenderer.screenH - (int) size*2) + size;
 
-        // Check to see that the point dot doesn't get created on the player dot
+        // Check to see that the point dot doesn't spawn on the player dot
+        if( isPointOnDot(mPlayerDot, new PointF(x, y), size*10.0f) ){
 
-        if( isPointOnDot(mPlayerDot, new PointF(x, y), size) ){
-
-            return createPointDot(size, value);
+            return spawnPointDot(size, value);
         }
 
         PointDot pDot = new PointDot(new PointF(x, y), mPlayerDot.color, size,
                 value);
-
+        mSoundPool.play(mSoundJumpId, 1, 1, 1, 0, 1);
         addDot(pDot);
 
         return pDot;
@@ -167,21 +177,21 @@ public class GameManager
         return distance <= 0;
     }
 
-    public PlayerDot createPlayerDot(final PointF position, final float size){
+    public PlayerDot spawnPlayerDot(final PointF position, final float size){
 
         int index = RANDOM.nextInt(colorAlt.length);
         PlayerDot playerDot = new PlayerDot(position, colorAlt[index],
-                size, PLAYER_DOT_SPEED_RATIO);
+                size, PLAYER_DOT_SPEED_RATIO*OpenGLActivity.screenDensity);
         addDot(playerDot);
         return playerDot;
 
     }
 
-    public void createRandomDot(final float size,
-                                final int maxX, final int maxY){
+    public void spawnRandomDot(final float size,
+                               final int maxX, final int maxY){
 
         // Default values for position and direction
-        float y, x = y =  0.0f;
+        float y, x = y =  size*2.0f;
         float vy, vx = vy = 1.0f;
 
         // For sides, switch 0-3
@@ -201,7 +211,7 @@ public class GameManager
 
             // Right
             case 2:
-                x = maxX;
+                x = maxX - size/2.0f;
                 y = RANDOM.nextInt(maxY);
 
                 vx = - 1.0f;
@@ -211,7 +221,7 @@ public class GameManager
             // Bottom
             case 3:
                 x = RANDOM.nextInt(maxX);
-                y = maxY;
+                y = maxY - size/2.0f;
 
                 vx = (RANDOM.nextFloat()*2.0f) - 1.0f;
                 vy = - 1.0f;
@@ -227,10 +237,10 @@ public class GameManager
                 vy/(float)normal
         );
 
-        int index = RANDOM.nextInt(colorAlt.length);
-        int color = colorAlt[index];
+        int color = colorAlt[mColorCounter++ % colorAlt.length];
 
-        Dot dot = new Dot(position, velocity, color, size, SMALL_DOT_SPEED_RATIO);
+        Dot dot = new Dot(position, velocity, color, size,
+                SMALL_DOT_SPEED_RATIO*OpenGLActivity.screenDensity);
         addDot(dot);
 
     }
@@ -240,24 +250,26 @@ public class GameManager
 
     = mDotCreateTimer = System.nanoTime();
     private long mStartTime;
-    private void gameLoop() {
-
+    private void gameLoop(boolean kioskMode) {
 
 
         // Always clear the dot list for a new game
         dotList.clear();
 
-        // Re add the player dot
-        dotList.add(mPlayerDot);
+        if(!kioskMode) {
+            // Re add the player dot
+            dotList.add(mPlayerDot);
 
-        // Reset player dot
-        mPlayerDot.x = GLRenderer.screenW / 2.0f;
-        mPlayerDot.y = GLRenderer.screenH / 2.0f;
-        mPlayerDot.setSize(PLAYER_DOT_SIZE_RATIO);
+            // Reset player dot
+            mPlayerDot.x = GLRenderer.screenW / 2.0f;
+            mPlayerDot.y = GLRenderer.screenH / 2.0f;
+            mPlayerDot.setSize(PLAYER_DOT_SIZE_RATIO*OpenGLActivity.screenDensity);
 
-        // Register the senor listener
-        registerSensorListener(mPlayerDot);
+            // Register the senor listener
+            registerSensorListener(mPlayerDot);
 
+            setGameState(STATE_RUNNING);
+        }
 
         // Clear the point dot
         mPointDot = null;
@@ -268,10 +280,7 @@ public class GameManager
         double mLastUpdateTime = mStartTime = System.nanoTime();
         double lastRenderTime;
 
-        long stepCount = 0l;
-
         running = true;
-        setGameState(STATE_RUNNING);
         while(running) {
 
             double now = System.nanoTime();
@@ -316,14 +325,14 @@ public class GameManager
                     mLastUpdateTime) / TIME_BETWEEN_UPDATES) );
 
             // Announce that a step has taken place
-            performAction(ACTION_STEP, null, "Interpolation (float)");
-
             synchronized (lock){
 
-                // Wait for the draw thread to onStop
+                performAction(ACTION_STEP, null, "Interpolation (float)");
+
+                // Wait for the draw thread to draw
                 while (!condition && running){
                     try {
-                        lock.wait();
+                        lock.wait(500);
                     } catch (InterruptedException e) {}
                 }
                 condition = false;
@@ -347,13 +356,16 @@ public class GameManager
 
                 now = System.nanoTime();
             }
-            stepCount++;
         }
 
         //mSensorManager.unregisterListener(mPlayerDot, mRotationSensor);
     }
 
     private double getSpawnWaitTime(double now) {
+
+        if(mKioskMode){
+            return SMALL_DOT_CREATE_INTERVAL;
+        }
 
         long diff = (long) now - mStartTime;
 
@@ -366,17 +378,19 @@ public class GameManager
 
     }
 
-    private void createRandomDot(double now) {
-        if(now - mDotCreateTimer > getSpawnWaitTime(now)){
+    private void spawnRandomDot(double now) {
+        if(now - mDotCreateTimer > getSpawnWaitTime(now)
+                && (!mKioskMode || dotList.size() < 10)){
 
             mDotCreateTimer = now;
 
-            createRandomDot(SMALL_DOT_SIZE_RATIO, GLRenderer.screenW,
+            spawnRandomDot(SMALL_DOT_SIZE_RATIO*OpenGLActivity.screenDensity,
+                    GLRenderer.screenW,
                     GLRenderer.screenH);
         }
     }
 
-    private void createBigPoint(double now) {
+    private void spawnBigPoint(double now) {
 
         long interval = RANDOM.nextInt(POINT_DOT_TIME_BETWEEN);
         long halfInterval = POINT_DOT_TIME_BETWEEN /2;
@@ -392,7 +406,8 @@ public class GameManager
                 if (now - mPointTimer > randomNanoTime) {
 
                     // Create a new point dot
-                    mPointDot = createPointDot(POINT_DOT_SIZE_RATIO, POINT_DOT_VALUE);
+                    mPointDot = spawnPointDot(
+                            POINT_DOT_SIZE_RATIO*OpenGLActivity.screenDensity, POINT_DOT_VALUE);
                     mPointTimer = now;
                 }
             }
@@ -408,19 +423,21 @@ public class GameManager
         else if (now - mStartTime > randomNanoTime) {
 
             // Create a mew point dot
-            mPointDot = createPointDot(POINT_DOT_SIZE_RATIO, POINT_DOT_VALUE);
+            mPointDot = spawnPointDot(
+                    POINT_DOT_SIZE_RATIO*OpenGLActivity.screenDensity,
+                    POINT_DOT_VALUE);
             mPointTimer = now;
         }
 
     }
 
-    public Object lock = new Object();
+    public final Object lock = new Object();
 
     public boolean condition = false;
     private void updateGame(double now){
 
-        createRandomDot(now);
-        createBigPoint(now);
+        spawnRandomDot(now);
+        spawnBigPoint(now);
 
         Dot dot;
         for(int i = 0; i < dotList.size(); i++){
@@ -436,7 +453,7 @@ public class GameManager
                 // Update the dot with new position etc.
                 dot.update(now);
 
-                boolean[] flags = GameManager.isPositionOnScreen(dot, 0);
+                boolean[] flags = GameManager.isPositionOnScreen(dot, dot.getSize());
                 if(flags[GameManager.OUT_OF_LEFT] || flags[GameManager.OUT_OF_RIGHT]){
 
                     // Bounce dot x-axis
@@ -483,7 +500,7 @@ public class GameManager
 
     private boolean didCollide(final PlayerDot playerDot, final Dot dot){
 
-        if(playerDot.id == dot.id) {
+        if(mKioskMode || playerDot.id == dot.id) {
             return false;
         }
 
@@ -492,10 +509,16 @@ public class GameManager
 
             if(dot instanceof PointDot){
 
-                performAction(ACTION_SCORE_CHANGED, score += 5, "Score " +
-                        "Updated");
 
-                mPlayerDot.setSize(mPlayerDot.getSize() + 7.0f);
+
+                performAction(ACTION_SCORE_CHANGED,
+                        score += 5,
+                        "Score Updated");
+
+                mPlayerDot.setSize(
+                        mPlayerDot.getSize() +
+                                PLAYER_DOT_SIZE_INCREMENT_POINT
+                                        *OpenGLActivity.screenDensity);
 
                 // Switch color on model
                 switchColorOnDot(playerDot);
@@ -504,11 +527,12 @@ public class GameManager
 
             // If color is equal to the color of player
             else if(playerDot.color == dot.color){
-
                 performAction(ACTION_SCORE_CHANGED, ++score, "Score " +
                         "Updated");
 
-                mPlayerDot.setSize(mPlayerDot.getSize() + 2.0f);
+                mPlayerDot.setSize(
+                        mPlayerDot.getSize() + PLAYER_DOT_SIZE_INCREMENT_SMALL
+                                *OpenGLActivity.screenDensity);
 
             }
 
@@ -517,6 +541,7 @@ public class GameManager
 
                 gameOver();
             }
+            mSoundPool.play(mSoundBlopId, 1, 1, 1, 0, 1);
             return true;
         }
 
@@ -538,6 +563,7 @@ public class GameManager
     public static final int OUT_OF_RIGHT = 2;
     public static final int OUT_OF_BOTTOM = 3;
     public static final int IS_ON_SCREEN = 4;
+
     public static boolean[] isPositionOnScreen(PointF p, float size){
 
         boolean[] flags = new boolean[5];
@@ -565,8 +591,10 @@ public class GameManager
     }
 
     private void setGameState(int state){
-        gameState = state;
-        performAction(ACTION_STATE_CHANGED, state, "Game state changed.");
+        if(!mKioskMode) {
+            gameState = state;
+            performAction(ACTION_STATE_CHANGED, state, "Game state changed.");
+        }
     }
 
 
@@ -652,6 +680,11 @@ public class GameManager
         }
 
         setGameState(STATE_RUNNING);
+
+    }
+
+    public boolean isInKioskMode(){
+        return mKioskMode;
     }
 
     public void destroy() {
@@ -692,4 +725,9 @@ public class GameManager
 
     }
 
+    public void setSoundPool(SoundPool soundPool, int blopId, int jumpId) {
+        mSoundPool = soundPool;
+        mSoundBlopId = blopId;
+        mSoundJumpId = jumpId;
+    }
 }

@@ -16,44 +16,65 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/score_label"
-        android:textColor="@android:color/white"/>
+        android:textColor="@android:color/white"
+        android:visibility="invisible"/>
 
     <TextView
+        android:id="@+id/opengl_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="@string/opengl_label_text"
-        android:id="@+id/opengl_label"
-        android:layout_centerVertical="true"
-        android:layout_centerHorizontal="true"
-        />
+        android:text=""
+        android:textSize="18pt"
+        android:paddingBottom="12pt"
+        android:layout_above="@+id/container"
+        android:layout_centerHorizontal="true"/>
 
-    <Button
-        style="?android:attr/buttonStyleSmall"
+    <RelativeLayout
+        android:id="@+id/container"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/opengl_button"
-        android:layout_below="@+id/opengl_label"
         android:layout_centerHorizontal="true"
-        android:text="@string/opengl_button_text"
-        />
-    <Button
-        style="?android:attr/buttonStyleSmall"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/resume_button"
-        android:layout_below="@+id/opengl_label"
-        android:layout_centerHorizontal="true"
-        android:text="Resume"
-        android:visibility="gone"/>
+        android:layout_centerVertical="true">
 
-    <Button
-        style="?android:attr/buttonStyleSmall"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="High Score"
-        android:id="@+id/high_score_button"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentStart="true"/>
+        <Button
+            style="?android:attr/buttonStyleSmall"
+            android:id="@+id/opengl_button"
+            android:text="@string/opengl_button_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:textColor="@color/white"
+            android:textSize="12pt"
+            android:background="@color/transparent"
+            android:padding="5pt"/>
+
+        <Button
+            style="?android:attr/buttonStyleSmall"
+            android:id="@+id/resume_button"
+            android:text="@string/resume_button_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:visibility="gone"
+            android:textColor="@color/white"
+            android:textSize="12pt"
+            android:background="@color/transparent"
+            android:padding="5pt"/>
+
+        <Button
+            style="?android:attr/buttonStyleSmall"
+            android:id="@+id/high_score_button"
+            android:text="@string/high_score_button_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/opengl_button"
+            android:layout_centerHorizontal="true"
+            android:textColor="@color/white"
+            android:textSize="12pt"
+            android:background="@color/transparent"
+            android:padding="5pt"/>
+    </RelativeLayout>
+
 
 </RelativeLayout>

@@ -2,11 +2,12 @@
     <string name="app_name">CollorDotts</string>
     <string name="title_activity_open_gl">Collored Dots</string>
 
-    <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
     <string name="score_label_text">0</string>
     <string name="game_over_label_text">GAME OVER</string>
-    <string name="retry_button_text">Retry</string>
+    <string name="retry_button_text">RETRY</string>
     <string name="opengl_label_text">Start New Game</string>
-    <string name="opengl_button_text">Start</string>
+    <string name="opengl_button_text">PLAY</string>
+    <string name="resume_button_text">RESUME</string>
+    <string name="high_score_button_text">HIGH SCORE</string>
 </resources>

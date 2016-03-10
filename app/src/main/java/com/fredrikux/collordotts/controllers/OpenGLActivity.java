@@ -10,7 +10,13 @@ import android.content.IntentSender;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.hardware.SensorManager;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.media.SoundPool;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -29,6 +35,7 @@ import com.google.android.gms.games.Games;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 
 public class OpenGLActivity
         extends
@@ -49,7 +56,7 @@ public class OpenGLActivity
         public void onClick(View v) {
 
             // Start the game
-            mGameManager.startNewGame();
+            mGameManager.startNewGame(false);
 
         }
     };
@@ -68,45 +75,57 @@ public class OpenGLActivity
         @Override
         public void onActionPerformed(final ActionEvent event) {
 
-            // Update the UI from the UI Thread
-            runOnUiThread(new Runnable() {
+        // Update the UI from the UI Thread
+        runOnUiThread(new Runnable() {
 
-                @Override
-                public void run() {
-                    switch (event.action) {
-                        case GameManager.ACTION_SCORE_CHANGED:
+            @Override
+            public void run() {
+            switch (event.action) {
+                case GameManager.ACTION_SCORE_CHANGED:
 
-                            int score = (int) event.source;
-                            mScoreView.setText("" + score);
-                            break;
+                    int score = (int) event.source;
+                    mScoreView.setText("" + score);
+                    break;
 
-                        case GameManager.ACTION_STATE_CHANGED:
+                case GameManager.ACTION_STATE_CHANGED:
 
-                            updateUserInterface(mGameManager.getGameState());
-                            break;
+                    updateUserInterface(mGameManager.getGameState());
+                    break;
 
-                        case GameManager.ACTION_STEP:
-                            mGLView.requestRender();
-                            break;
+                case GameManager.ACTION_STEP:
+                    mGLView.requestRender();
+                    break;
 
-                        default:
-                            break;
-                    }
-                }
-            });
+
+                default:
+                    break;
+            }
+            }
+        });
         }
     };
 
     private String mLeaderBoardId;
     private GLRenderer mRenderer;
     private Button mResumeButton;
+    private MediaPlayer mMediaPlayer;
+    public static int screenDensity;
+    private SoundPool mSoundPool;
+    private AudioManager mAudioManager;
+    private HashMap mSoundPoolMap;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_open_gl);
-        
+
+
+        DisplayMetrics metrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(metrics);
+
+        screenDensity = metrics.densityDpi;
+
         mTextView = (TextView) findViewById(R.id.opengl_label);
         mButton = (Button) findViewById(R.id.opengl_button);
         mButton.setOnClickListener(mNewGameHandler);
@@ -122,8 +141,6 @@ public class OpenGLActivity
 
             mGameManager = savedInstanceState.getParcelable("mGameManager");
             mGameManager.setListener(mGameWorldListener);
-
-
 
             mTextView.setText(savedInstanceState.getString("mTextViewStr"));
             mTextView.setVisibility(savedInstanceState.getInt
@@ -156,13 +173,14 @@ public class OpenGLActivity
                 .SENSOR_SERVICE);
         mGameManager.setSensorManager(sensorManager);
 
-        mGLView = (GLSurfaceView) findViewById(R.id.opengl_view);
-        mGLView.setEGLContextClientVersion(2);
-        mGLView.setPreserveEGLContextOnPause(true);
-        mGLView.setRenderer(mRenderer);
-        mGLView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-        mGLView.setFocusable(true);
 
+        // Load the media player
+        SoundPool soundPool = loadSoundPool();
+        int blopSoundId = soundPool.load(this, R.raw.blop, 1);
+        int jumpSoundId = soundPool.load(this, R.raw.jump, 1);
+        mGameManager.setSoundPool(soundPool, blopSoundId, jumpSoundId);
+
+        mGLView = setUpGLView();
 
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addOnConnectionFailedListener(this)
@@ -200,6 +218,39 @@ public class OpenGLActivity
             }
         });
 
+        // Start the game in kiosk mode
+        mGameManager.startNewGame(true);
+
+    }
+
+    private GLSurfaceView setUpGLView() {
+        GLSurfaceView glView = (GLSurfaceView) findViewById(R.id.opengl_view);
+        glView.setEGLContextClientVersion(2);
+        glView.setPreserveEGLContextOnPause(true);
+        glView.setRenderer(mRenderer);
+        glView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+        glView.setFocusable(true);
+
+        return glView;
+    }
+
+    private SoundPool loadSoundPool() {
+        SoundPool soundPool;
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            AudioAttributes atrib = new AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .build();
+
+            soundPool = new SoundPool.Builder()
+                    .setMaxStreams(10)
+                    .setAudioAttributes(atrib)
+                    .build();
+        } else {
+            soundPool = new SoundPool(10, AudioManager.STREAM_MUSIC, 1);
+
+        }
+        return soundPool;
     }
 
     private void updateUserInterface(int state) {
@@ -207,9 +258,9 @@ public class OpenGLActivity
             case GameManager.STATE_GAME_OVER:
 
                 // Show restart view
-                mResumeButton.setVisibility(View.GONE);
-                mTextView.setText("Wanna go again?");
                 mTextView.setVisibility(View.VISIBLE);
+                mTextView.setText("Score: " + mGameManager.getScore());
+                mResumeButton.setVisibility(View.GONE);
                 mButton.setText("RETRY");
                 mButton.setVisibility(View.VISIBLE);
                 mScoreView.setText("" + mGameManager.getScore());
@@ -225,12 +276,12 @@ public class OpenGLActivity
             case GameManager.STATE_NOT_STARTED:
 
                 // Show start new game view
+                mTextView.setVisibility(View.INVISIBLE);
                 mResumeButton.setVisibility(View.GONE);
-                mTextView.setText("Start New Game");
-                mTextView.setVisibility(View.VISIBLE);
                 mButton.setText("START");
                 mButton.setVisibility(View.VISIBLE);
                 mScoreView.setText("0");
+                mScoreView.setVisibility(View.INVISIBLE);
                 mLeaderBoardButton.setVisibility(View.VISIBLE);
                 break;
 
@@ -238,15 +289,16 @@ public class OpenGLActivity
 
                 mResumeButton.setVisibility(View.VISIBLE);
                 break;
+
             case GameManager.STATE_RUNNING:
 
                 // Do nothing
-                mResumeButton.setVisibility(View.GONE);
                 mTextView.setVisibility(View.INVISIBLE);
-                mTextView.setText("Start New Game");
+                mResumeButton.setVisibility(View.GONE);
                 mButton.setText("START");
                 mButton.setVisibility(View.INVISIBLE);
                 mScoreView.setText("0");
+                mScoreView.setVisibility(View.VISIBLE);
                 mLeaderBoardButton.setVisibility(View.INVISIBLE);
                 break;
 
@@ -267,7 +319,6 @@ public class OpenGLActivity
     }
 
     private GameManager setUpGameManager() {
-
 
         GameManager gameManager = new GameManager();
 
@@ -302,6 +353,9 @@ public class OpenGLActivity
     @Override
     protected void onResume(){
         super.onResume();
+        if(mGameManager.isInKioskMode()){
+            mGameManager.unPause();
+        }
         /*if (mGameManager.isGameRunning() && mGameManager.isGamePaused()) {
             mGameManager.unPause();
         }*/
