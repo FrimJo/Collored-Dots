@@ -1,21 +1,30 @@
 apply plugin: 'com.android.application'
 
 android {
+    signingConfigs {
+        config {
+            keyAlias 'United Colors'
+            keyPassword 'mx510HOME'
+            storeFile file('/Users/fredrikjohansson/StudioProjects/key-store.jks')
+            storePassword 'mx510HOME'
+        }
+    }
     compileSdkVersion 23
     buildToolsVersion "23.0.2"
-
     defaultConfig {
-        applicationId "com.fredrikux.collordotts"
+        applicationId 'com.fredrikux.unitedcolors'
         minSdkVersion 19
         targetSdkVersion 23
-        versionCode 6
-        versionName "1.0"
+        versionCode 16
+        versionName "2.3"
     }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+    productFlavors {
     }
 }
 

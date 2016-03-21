@@ -1,7 +1,10 @@
-package com.fredrikux.collordotts.models;
+package com.fredrikux.unitedcolors.models;
 
-import com.fredrikux.collordotts.utils.Animation;
+import com.fredrikux.unitedcolors.utils.Animation;
 
+/**
+ * This animation class handles the changes the size once for a dot.
+ */
 public abstract class SizeAnimation extends Animation {
 
     private float mStartSize;
@@ -16,9 +19,9 @@ public abstract class SizeAnimation extends Animation {
     }
 
     @Override
-    public void updateAnimation(double now){
+    public void updateAnimation(long timeStep){
 
-        double percent = getPercentage(now);
+        double percent = getPercentage(timeStep);
 
         // Set the size of the dot to a percent of the goal size
         float size = (float) (mStartSize + mGoalSize * percent);

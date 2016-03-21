@@ -1,6 +1,5 @@
-package com.fredrikux.collordotts.opengl;
+package com.fredrikux.unitedcolors.opengl;
 
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
@@ -12,12 +11,7 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Log;
 
-import com.fredrikux.collordotts.R;
-import com.fredrikux.collordotts.models.GameManager;
-import com.fredrikux.collordotts.utils.IActionListener;
-
-import java.io.IOException;
-import java.io.InputStream;
+import com.fredrikux.unitedcolors.models.GameManager;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -39,14 +33,16 @@ public class GLRenderer
     private GameManager mGameManager;
     private GLDotEmitter mDotEmitter;
     private final Bitmap mBitmap;
+    private final Bitmap mGlare;
 
-    public GLRenderer(Bitmap bitmap){
+    public GLRenderer(Bitmap bitmap, Bitmap glare){
         mBitmap = bitmap;
+        mGlare = glare;
     }
 
     protected GLRenderer(Parcel in) {
-        mGameManager = in.readParcelable(GameManager.class.getClassLoader());
         mBitmap = in.readParcelable(Bitmap.class.getClassLoader());
+        mGlare = in.readParcelable(Bitmap.class.getClassLoader());
     }
 
     public static final Creator<GLRenderer> CREATOR = new Creator<GLRenderer>() {
@@ -64,14 +60,15 @@ public class GLRenderer
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
 
-        GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        GLES20.glClearColor(0.47f,0.7176f,0.89f, 1.0f);
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA);
 
-        int dotTextureIndex = loadTexture();
-        mDotEmitter = new GLDotEmitter(dotTextureIndex);
+        int dotTextureIndex = loadTexture(mBitmap);
+        int glareTextureIndex = loadTexture(mGlare);
+        mDotEmitter = new GLDotEmitter(dotTextureIndex, glareTextureIndex);
 
         mDotEmitter.prepareBuffers(
             mGameManager.getPositions(),
@@ -126,7 +123,7 @@ public class GLRenderer
      *
      * @return a int handler representing the texture.
      */
-    public int loadTexture() {
+    public int loadTexture(Bitmap bitmap) {
 
         // One texture
         final int[] textureHandle = new int[1];
@@ -138,7 +135,7 @@ public class GLRenderer
             options.inScaled = false;	// No pre-scaling
 
             // Read in the resource
-            final Bitmap bitmap = mBitmap;
+            //final Bitmap bitmap = mBitmap;
 
             // Bind to the texture in OpenGL
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureHandle[0]);
@@ -206,8 +203,8 @@ public class GLRenderer
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeParcelable(mGameManager, flags);
         dest.writeParcelable(mBitmap, flags);
+        dest.writeParcelable(mGlare, flags);
     }
 
     public void setGameManager(GameManager gameManager) {

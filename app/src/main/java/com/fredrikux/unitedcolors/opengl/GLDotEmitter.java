@@ -1,4 +1,4 @@
-package com.fredrikux.collordotts.opengl;
+package com.fredrikux.unitedcolors.opengl;
 
 import android.opengl.GLES20;
 import android.opengl.GLU;
@@ -8,6 +8,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
+/**
+ * The main class for drawing dots, using Open GL ES 2.0
+ */
 public class GLDotEmitter {
 
     private static final int SIZE_OF_COORD = 2;
@@ -31,8 +34,10 @@ public class GLDotEmitter {
         "precision mediump float;" +
         "varying vec4 v_Color;" +
         "uniform sampler2D u_Texture;" +
+        "uniform sampler2D u_GlareTexture;" +
         "void main() {" +
-        "  gl_FragColor = (v_Color * texture2D(u_Texture, gl_PointCoord));" +
+        "  gl_FragColor = (v_Color * texture2D(u_Texture, gl_PointCoord))" +
+                "+ texture2D(u_GlareTexture, gl_PointCoord);" +
         "}";
 
     private final int mProgram;
@@ -45,7 +50,9 @@ public class GLDotEmitter {
     // Uniform handles
     private final int u_MVPMatrix;
     private final int u_Texture;
+    private final int u_GlareTexture;
     private int mTextureData;
+    private int mGlareTextureData;
 
     private FloatBuffer mPositionBuffer;
     private FloatBuffer mColorBuffer;
@@ -53,9 +60,10 @@ public class GLDotEmitter {
     private int mDotCount;
 
 
-    public GLDotEmitter(final int textureIndex) {
+    public GLDotEmitter(final int textureIndex, final int glareTextureIndex) {
 
         mTextureData = textureIndex;
+        mGlareTextureData = glareTextureIndex;
 
         // Create program
         mProgram = buildProgram();
@@ -68,9 +76,15 @@ public class GLDotEmitter {
         // Uniforms
         u_MVPMatrix = GLES20.glGetUniformLocation(mProgram, "u_MVPMatrix");
         u_Texture = GLES20.glGetUniformLocation(mProgram, "u_Texture");
+        u_GlareTexture = GLES20.glGetUniformLocation(mProgram, "u_GlareTexture");
 
     }
 
+    /**
+     * Builds the program which is used for drawing dots.
+     *
+     * @return a handle to the program
+     */
     private int buildProgram(){
 
         int vertexShader = GLRenderer.loadShader(GLES20.GL_VERTEX_SHADER,
@@ -151,6 +165,10 @@ public class GLDotEmitter {
 
     }
 
+    /**
+     * Update the buffers for later use.
+     * @param count
+     */
     public void updateBuffers(int count){
 
         mDotCount = count;
@@ -173,8 +191,10 @@ public class GLDotEmitter {
 
         GLES20.glUseProgram(mProgram);
 
+        // Removes the black borders for the transparency
         GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        //GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20
+        // .GL_ONE_MINUS_SRC_ALPHA);
 
         GLES20.glEnableVertexAttribArray(a_Position);
         GLES20.glVertexAttribPointer(
@@ -206,9 +226,15 @@ public class GLDotEmitter {
                 mSizeBuffer
         );
 
+
+
+        GLES20.glUniform1i(u_Texture, 0);
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureData);
-        GLES20.glUniform1i(u_Texture, 0);
+
+        GLES20.glUniform1i(u_GlareTexture, 1);
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mGlareTextureData);
 
         GLES20.glUniformMatrix4fv(u_MVPMatrix, 1, false, mMVPMatrix, 0);
         GLES20.glDrawArrays(GLES20.GL_POINTS, 0, mDotCount);
@@ -216,6 +242,7 @@ public class GLDotEmitter {
         // Disable vertex array
         GLES20.glDisableVertexAttribArray(a_Position);
         GLES20.glDisableVertexAttribArray(a_Color);
+        GLES20.glDisableVertexAttribArray(a_Size);
     }
 
     public void finish() {

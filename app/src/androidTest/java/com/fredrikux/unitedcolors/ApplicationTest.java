@@ -1,4 +1,4 @@
-package com.fredrikux.collordotts;
+package com.fredrikux.unitedcolors;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;
